@@ -52,7 +52,7 @@ class Note:
         # Type 30,31,32: ChainNote
         if (self.note_type - 30) < 3 and (self.note_type >= 30):
             return True
-        # Type 33: ChainMiddleNote (Conditional)
+        # Type 33: ChainMiddleNote (Conditional) (Automatically created by game, not used in chart)
         return self.note_type == 33 and ((arg ^ 1) & 1) == 1
         
     def is_long_note(self):
