@@ -1,11 +1,11 @@
-from parser import NoteInfo, Note
+from model import NoteInfo, Note, NoteType
 from typing import Optional
 import math
 import skia as sk
 
 
 def analyze_beat_lines(chart: NoteInfo, max_time: Optional[float] = None) -> list[float]:
-    bpm_changes = [x for x in chart.notes if x.note_type == 2]
+    bpm_changes = [x for x in chart.notes if x.note_type == NoteType.BPM_CHANGE]
     max_time = max(x.time for x in chart.notes) if max_time is None else max_time
     curr_bpm = chart.bpm
     curr_time = 0.0
@@ -132,7 +132,7 @@ class ChainbeetRenderer:
         self.bpm = chart.bpm
         self.notes: list[Note] = chart.notes.copy()
         self.notes.sort(key=lambda x: x.time)
-        self.speed_changes = [x for x in self.notes if x.note_type == 3]
+        self.speed_changes = [x for x in self.notes if x.note_type == NoteType.TIME_SCALE]
         self.chart_name = chart_name
         self.text_font = text_font
 
@@ -240,7 +240,7 @@ class ChainbeetRenderer:
                     path.close()
                     canvas.drawPath(path, charge_segment_paint if note.is_long_note() else long_chain_segment_paint)
                     canvas.drawPath(path, charge_segment_stroke_paint)
-                if note.is_long_note() or (note.is_long_chain_note() and note.note_type in [60, 61]):
+                if note.is_long_note() or (note.is_long_chain_note() and note.note_type in {NoteType.LONG_CHAIN_BEGIN, NoteType.LONG_CHAIN_END}):
                     charge_path = _create_charge_path(note_width, base_size) if note.is_long_note() else _create_chain_path(base_size)
                     charge_path.offset(width * note.position, height - self.compute_time_y(note.time))
                     canvas.drawPath(charge_path, charge_paint if note.is_long_note() else long_chain_paint)
@@ -262,7 +262,7 @@ class ChainbeetRenderer:
             text = '{:g}x'.format(self.speed_changes[i].time_scale)
             canvas.drawString(text, 10, y + text_font.getMetrics().fDescent, text_font, text_paint)
         # BPM Change Text Hint
-        for bpm_change in [x for x in self.chart.notes if x.note_type == 2]:
+        for bpm_change in [x for x in self.chart.notes if x.note_type == NoteType.BPM_CHANGE]:
             y = height - self.compute_time_y(bpm_change.time)
             t = str(bpm_change.change_bpm)
             text_width = text_font.measureText(t)
