@@ -73,6 +73,7 @@ def analyze_beats(notes: list) -> list[tuple[float, int]]:
 
 
 def _create_charge_path(width: float, base_size: float):
+    """Create note head/tail path for charge notes"""
     extra_width = width - base_size * 2
     half_width = extra_width / 2
     path = sk.Path()
@@ -89,6 +90,7 @@ def _create_charge_path(width: float, base_size: float):
 
 
 def _create_chain_path(base_size: float):
+    """Create note head/tail path for chain notes"""
     path = sk.Path()
     path.moveTo(0, -base_size)
     path.lineTo(base_size, 0)
