@@ -46,7 +46,7 @@ class Note:
         self.prev_note, self.next_note = None, None
         
     def is_wide_note(self):
-        return self.note_type >= 40
+        return 40 <= self.note_type < 60
         
     def is_chain_note(self, arg: int):
         # Type 30,31,32: ChainNote
@@ -54,6 +54,12 @@ class Note:
             return True
         # Type 33: ChainMiddleNote (Conditional) (Automatically created by game, not used in chart)
         return self.note_type == 33 and ((arg ^ 1) & 1) == 1
+    
+    def is_long_chain_note(self):
+        # Type 60: LongChainBeginNote
+        # Type 61: LongChainEndNote
+        # Type 62: LongChinaNote
+        return (self.note_type - 60) < 3 and (self.note_type >= 60) 
         
     def is_long_note(self):
         # Type 20: ChargeBeginNote
@@ -109,6 +115,7 @@ def parse(info_json: str, mirror: bool=False) -> NoteInfo:
     minus_beat = 0.0
     charge_group_end: dict[int | None, Note] = {}
     chain_group_end: dict[int | None, Note] = {}
+    long_chain_group_end: dict[int | None, Note] = {}
     notes.sort(key=_raw_note_sort_key)
     for note in notes:
         beat_plus: int = note[0]
@@ -150,4 +157,11 @@ def parse(info_json: str, mirror: bool=False) -> NoteInfo:
                 prev.next_note = logic_note
                 logic_note.prev_note = prev
                 chain_group_end[logic_note.group] = logic_note
+            case 60:
+                long_chain_group_end[logic_note.group] = logic_note
+            case 61 | 62:
+                prev = long_chain_group_end[logic_note.group]
+                prev.next_note = logic_note
+                logic_note.prev_note = prev
+                long_chain_group_end[logic_note.group] = logic_note
     return info

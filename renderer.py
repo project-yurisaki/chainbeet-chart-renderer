@@ -168,6 +168,8 @@ class ChainbeetRenderer:
         note_bold_stroke_paint = sk.Paint(Color=0xffe8c9c7, AntiAlias=True, Style=sk.Paint.kStroke_Style, StrokeWidth=4)
         chain_paint = sk.Paint(Color=0xff004a80)
         charge_paint = sk.Paint(Color=0xff3c7b1e)
+        long_chain_paint = sk.Paint(Color=0xff1d4674)
+        long_chain_segment_paint = sk.Paint(Color=0xff1f2e41)
         charge_segment_paint = sk.Paint(Color=0xff374219, AntiAlias=True)
         charge_segment_stroke_paint = sk.Paint(Color=0xdde8c9c7, AntiAlias=True, Style=sk.Paint.kStroke_Style,
                                                StrokeWidth=1)
@@ -208,7 +210,7 @@ class ChainbeetRenderer:
         notes.sort(key=lambda x: x.time)
         for note in notes:
             if note.is_tap_note():
-                note_width = width * note.width * self.config.width_scale if note.is_wide_note() else base_size * 2
+                note_width = width * (note.width or 0) * self.config.width_scale if note.is_wide_note() else base_size * 2
                 y = height - self.compute_time_y(note.time)
                 rect = sk.Rect(width * note.position - note_width / 2, y - base_size,
                                width * note.position + note_width / 2, y + base_size)
@@ -225,8 +227,8 @@ class ChainbeetRenderer:
                 canvas.drawPath(chain_path,
                                 note_bold_stroke_paint if note.time in coincident_timings else note_stroke_paint)
                 chain_path.offset(-width * note.position, -(height - self.compute_time_y(note.time)))
-            elif note.is_long_note():
-                note_width = width * note.width * self.config.width_scale if note.is_wide_note() else base_size * 2
+            elif note.is_long_note() or note.is_long_chain_note():
+                note_width = width * (note.width or 0) * self.config.width_scale if note.is_wide_note() else base_size * 2
                 if note.next_note:
                     start_x, start_y = width * note.position, height - self.compute_time_y(note.time)
                     end_x, end_y = width * note.next_note.position, height - self.compute_time_y(note.next_note.time)
@@ -236,14 +238,15 @@ class ChainbeetRenderer:
                     path.lineTo(end_x + note_width / 2, end_y)
                     path.lineTo(end_x - note_width / 2, end_y)
                     path.close()
-                    canvas.drawPath(path, charge_segment_paint)
+                    canvas.drawPath(path, charge_segment_paint if note.is_long_note() else long_chain_segment_paint)
                     canvas.drawPath(path, charge_segment_stroke_paint)
-                charge_path = _create_charge_path(note_width, base_size)
-                charge_path.offset(width * note.position, height - self.compute_time_y(note.time))
-                canvas.drawPath(charge_path, charge_paint)
-                canvas.drawPath(charge_path,
-                                note_bold_stroke_paint if note.time in coincident_timings else note_stroke_paint)
-                charge_path.offset(-width * note.position, -(height - self.compute_time_y(note.time)))
+                if note.is_long_note() or (note.is_long_chain_note() and note.note_type in [60, 61]):
+                    charge_path = _create_charge_path(note_width, base_size) if note.is_long_note() else _create_chain_path(base_size)
+                    charge_path.offset(width * note.position, height - self.compute_time_y(note.time))
+                    canvas.drawPath(charge_path, charge_paint if note.is_long_note() else long_chain_paint)
+                    canvas.drawPath(charge_path,
+                                    note_bold_stroke_paint if note.time in coincident_timings else note_stroke_paint)
+                    charge_path.offset(-width * note.position, -(height - self.compute_time_y(note.time)))
         # Note Beat Text Hint
         text_paint = sk.Paint(Color=0xffffffff)
         text_font = sk.Font()
