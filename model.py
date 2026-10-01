@@ -36,6 +36,8 @@ class NoteType(IntEnum):
     WIDE_CHARGE_BEGIN = 50
     # Type 51: WideChargeEndNote
     WIDE_CHARGE_END = 51
+    # Type 52: WideChargeMiddleNote
+    WIDE_CHARGE_MIDDLE = 52
 
     # Type 60: LongChainBeginNote
     LONG_CHAIN_BEGIN = 60
@@ -87,7 +89,7 @@ class Note:
         self.file = type_arg if isinstance(type_arg, str) else None
         self.change_bpm = float(type_arg) if (isinstance(type_arg, float) or isinstance(type_arg, int)) and self.note_type == NoteType.BPM_CHANGE else None
         self.time_scale = float(type_arg) if (isinstance(type_arg, float) or isinstance(type_arg, int)) and self.note_type == NoteType.TIME_SCALE else None
-        self.group = int(type_arg) if self.is_long_note() or self.is_chain_note(0) else None
+        self.group = int(type_arg) if self.is_long_note() or self.is_chain_note(0) or self.is_long_chain_note() else None
         if self.is_wide_note():
             if self.is_tap_note():
                 self.width = type_arg
@@ -102,6 +104,7 @@ class Note:
             NoteType.WIDE,
             NoteType.WIDE_CHARGE_BEGIN,
             NoteType.WIDE_CHARGE_END,
+            NoteType.WIDE_CHARGE_MIDDLE,
         }
 
     def is_chain_note(self, arg: int):
@@ -127,6 +130,7 @@ class Note:
             NoteType.CHARGE_MIDDLE,
             NoteType.WIDE_CHARGE_BEGIN,
             NoteType.WIDE_CHARGE_END,
+            NoteType.WIDE_CHARGE_MIDDLE,
         }
 
     def is_tap_note(self):
@@ -134,6 +138,7 @@ class Note:
 
     def is_meta_note(self):
         return self.note_type in {
+            0,  # Binary charts also support a type-0 audio event.
             NoteType.PLAY_BGM,
             NoteType.BPM_CHANGE,
             NoteType.TIME_SCALE,

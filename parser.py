@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+from binary_chart import decode_blob
 from model import Note, NoteInfo, NoteRawInfo, NoteType
 
 
@@ -9,8 +11,26 @@ def _raw_note_sort_key(note) -> float:
     return ((beat_idx / beat_split) + beat_plus)
 
     
-def parse(info_json: str, mirror: bool=False) -> NoteInfo:
-    value = json.loads(info_json)
+def parse(info_json: str | bytes | bytearray | memoryview, mirror: bool=False) -> NoteInfo:
+    """Analyze a JSON chart or a binary CBNE/CBTN chart (including SQLite BLOBs)."""
+    if not isinstance(info_json, str):
+        info_json = bytes(info_json)
+        if info_json.startswith((b'CBNE', b'CBTN')):
+            return parse_blob(info_json, mirror)
+    return _parse_value(json.loads(info_json), mirror)
+
+
+def parse_blob(data: bytes | bytearray | memoryview, mirror: bool=False) -> NoteInfo:
+    """Analyze a binary chart exported from note.data_v2 or saved as a file."""
+    return _parse_value(decode_blob(data), mirror)
+
+
+def load(path: str | Path, mirror: bool=False) -> NoteInfo:
+    """Load a chart file, automatically detecting JSON, CBNE or CBTN."""
+    return parse(Path(path).read_bytes(), mirror)
+
+
+def _parse_value(value: dict, mirror: bool) -> NoteInfo:
     info_value = value['info']
     info = NoteInfo(float(info_value['bpm']), info_value.get('dir'), int(info_value.get('delay', 0)), [], mirror)
     notes = value['notes']
@@ -35,7 +55,8 @@ def parse(info_json: str, mirror: bool=False) -> NoteInfo:
         note_time = curr_time + time_delta
         type_arg = note[6] if len(note) >= 7 else None
         type_arg_2 = note[7] if len(note) >= 8 else None
-        note_position = position_idx / (position_split - 1)
+        # Timing/audio events can use the client's single-position (1, 1) layout.
+        note_position = 0.0 if position_split == 1 and note_type in {0, 1, 2, 3} else position_idx / (position_split - 1)
         logic_note = Note(note_type, note_position, note_time, curr_bpm, type_arg, type_arg_2, raw_info)
         info.notes.append(logic_note)
         match logic_note.note_type:
@@ -49,7 +70,7 @@ def parse(info_json: str, mirror: bool=False) -> NoteInfo:
                 prev = charge_group_end.pop(logic_note.group)
                 prev.next_note = logic_note
                 logic_note.prev_note = prev
-            case NoteType.CHARGE_MIDDLE:
+            case NoteType.CHARGE_MIDDLE | NoteType.WIDE_CHARGE_MIDDLE:
                 prev = charge_group_end[logic_note.group]
                 prev.next_note = logic_note
                 logic_note.prev_note = prev
