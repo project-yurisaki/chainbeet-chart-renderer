@@ -1,2 +1,2 @@
-skia-python~=87.6
+skia-python>=144
 cryptography>=42
